@@ -17,8 +17,9 @@
   "packageRules": [
     {
       "matchDatasources": ["github-releases"],
-      "versioning": "loose",
-      "automerge": false
+      "automerge": false,
+      "minimumReleaseAge": "1 day",
+      "versioning": "regex:^(?<minor>\\d+\\-\\d+\\-\\d+)(\\-\\-(?<patch>\\d+\\-\\d+\\-\\d+))$"
     }
   ]
 }
