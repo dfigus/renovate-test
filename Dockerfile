@@ -5,10 +5,12 @@ FROM alpine:3.19 AS builder
 
 # package versions
 ARG ARGTABLE_VER="2.13"
+ARG TVHEADEND_COMMIT="e954d1661da3b32d4ac52e8a365444453a9b83ed"
+ARG COMSKIP_COMMIT="109b5d10b086d299d7e43878ccc7951cb7133ed8"
 
 # environment settings
 ARG TZ="Etc/UTC"
-ARG TVHEADEND_COMMIT="fd8b9e8ba21600d0bf6cdb20a7cc153482a2efa5"
+
 ENV HOME="/config"
 
 COPY argtable2_config/ /tmp/argtable2_config/
@@ -63,15 +65,17 @@ RUN \
 
 RUN \
     echo "**** compile tvheadend ****" && \
-    if [ -z ${TVHEADEND_COMMIT+x} ]; then \
-    TVHEADEND_COMMIT=$(curl -sX GET https://api.github.com/repos/tvheadend/tvheadend/commits/master \
-    | jq -r '. | .sha'); \
-    fi && \
     mkdir -p \
     /tmp/tvheadend && \
     git clone https://github.com/tvheadend/tvheadend.git /tmp/tvheadend && \
     cd /tmp/tvheadend && \
     git checkout "${TVHEADEND_COMMIT}" && \
+# patch cookie handling in extjs
+    sed -i 's/document\.cookie="ys-"+a/document\.cookie="ys-"+encodeURIComponent(a)/g' /tmp/tvheadend/vendor/ext-3.4/ext-all.js && \
+    sed -i 's/a\.substr(3)/decodeURIComponent(a\.substr(3))/g' /tmp/tvheadend/vendor/ext-3.4/ext-all.js && \
+    sed -i 's/document\.cookie = "ys-"+ name/ document\.cookie = "ys-"+ encodeURIComponent(name)/g' /tmp/tvheadend/vendor/ext-3.4/ext-all-debug.js && \
+    sed -i 's/document\.cookie = "ys-" + name/ document\.cookie = "ys-"+ encodeURIComponent(name)/g' /tmp/tvheadend/vendor/ext-3.4/ext-all-debug.js && \
+    sed -i 's/name\.substr(3)/decodeURIComponent(name\.substr(3))/g' /tmp/tvheadend/vendor/ext-3.4/ext-all-debug.js && \
     ./configure \
     `#Encoding` \
     --disable-ffmpeg_static \
@@ -134,6 +138,7 @@ RUN \
     echo "***** compile comskip ****" && \
     git clone https://github.com/erikkaashoek/Comskip /tmp/comskip && \
     cd /tmp/comskip && \
+    git checkout "${COMSKIP_COMMIT}" && \
     ./autogen.sh && \
     ./configure \
     --bindir=/usr/bin \
@@ -146,7 +151,7 @@ RUN \
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
-ARG PICONS_RELEASE="2023-12-16--05-47-38"
+ARG PICONS_RELEASE="2024-01-11--21-19-56"
 
 COPY requirements.txt /tmp/
 
@@ -161,7 +166,7 @@ RUN \
     python3-dev=3.11.6-r1 \
     && apk add --no-cache \
     bsd-compat-headers=0.7.2-r5 \
-    ffmpeg=6.1-r1 \
+    ffmpeg=6.1.1-r0 \
     ffmpeg4-libavcodec=4.4.4-r5 \
     ffmpeg4-libavdevice=4.4.4-r5 \
     ffmpeg4-libavfilter=4.4.4-r5 \
